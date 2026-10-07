@@ -23,6 +23,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-x11-0 \
     libgl1 \
     libegl1 \
+    libopengl0 \
+    libglx0 \
+    libxcb-glx0 \
+    libx11-xcb1 \
+    libxrender1 \
+    libxext6 \
+    libxi6 \
+    libsm6 \
+    libice6 \
+    libfreetype6 \
+    libxkbcommon0 \
     libfontconfig1 \
     libdbus-1-3 \
     libglib2.0-0 \
@@ -38,7 +49,10 @@ RUN mkdir -p /opt/oda && cd /opt/oda \
     && ./ODAFileConverter.AppImage --appimage-extract > /dev/null \
     && mv squashfs-root oda-extracted \
     && rm ODAFileConverter.AppImage \
-    && test -x /opt/oda/oda-extracted/AppRun
+    && test -x /opt/oda/oda-extracted/AppRun \
+    && (cd /opt/oda/oda-extracted && LD_LIBRARY_PATH="$(find . -name '*.so*' -printf '%h\n' | sort -u | sed 's|^\.|/opt/oda/oda-extracted|' | paste -sd:)" \
+        sh -c 'ldd ./AppRun; find . -type f -name "*.so*" -exec ldd {} \; 2>/dev/null' | grep "not found" | sort -u > /opt/oda/missing-libs.txt || true) \
+    && echo "Librerías faltantes para ODA:" && cat /opt/oda/missing-libs.txt
 
 # Se ejecuta a través de AppRun para que ODA encuentre sus propias librerías incluidas en el AppImage.
 ENV ODA_BIN=/opt/oda/oda-extracted/AppRun

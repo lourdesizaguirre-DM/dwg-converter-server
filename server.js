@@ -25,7 +25,9 @@ app.get("/", (req, res) => {
 // Diagnóstico: confirma que el contenedor tiene ODA y xvfb-run (si sale false, Render no usó el Dockerfile)
 app.get("/health", (req, res) => {
   const enPath = (bin) => (process.env.PATH || "").split(path.delimiter).some((d) => fs.existsSync(path.join(d, bin)));
-  res.json({ ok: true, oda: fs.existsSync(ODA_BIN), odaBin: ODA_BIN, xvfbRun: enPath("xvfb-run") });
+  let faltantes = [];
+  try { faltantes = [...new Set(fs.readFileSync("/opt/oda/missing-libs.txt", "utf8").split("\n").map((l) => l.trim().split(" ")[0]).filter(Boolean))]; } catch (e) {}
+  res.json({ ok: true, oda: fs.existsSync(ODA_BIN), odaBin: ODA_BIN, xvfbRun: enPath("xvfb-run"), libreriasFaltantes: faltantes });
 });
 
 app.post("/convert", upload.single("dwg"), (req, res) => {
