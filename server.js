@@ -22,6 +22,12 @@ app.get("/", (req, res) => {
   res.send("Servidor de conversión DWG → DXF para BIM CONTROL. Usa POST /convert con el campo 'dwg'.");
 });
 
+// Diagnóstico: confirma que el contenedor tiene ODA y xvfb-run (si sale false, Render no usó el Dockerfile)
+app.get("/health", (req, res) => {
+  const enPath = (bin) => (process.env.PATH || "").split(path.delimiter).some((d) => fs.existsSync(path.join(d, bin)));
+  res.json({ ok: true, oda: fs.existsSync(ODA_BIN), odaBin: ODA_BIN, xvfbRun: enPath("xvfb-run") });
+});
+
 app.post("/convert", upload.single("dwg"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No se recibió ningún archivo (campo 'dwg')." });
 
@@ -41,11 +47,11 @@ app.post("/convert", upload.single("dwg"), (req, res) => {
   };
 
   // Orden de argumentos documentado por Open Design Alliance:
-  // <carpeta origen> <carpeta destino> <filtro de entrada> <versión/tipo de salida> <recursivo 0|1> <auditar 0|1>
-  const args = [inputDir, outputDir, "*.dwg", "ACAD2018", "DXF", "0", "1"];
+  // <carpeta origen> <carpeta destino> <versión de salida> <tipo de salida> <recursivo 0|1> <auditar 0|1> [filtro de entrada]
+  const args = [inputDir, outputDir, "ACAD2018", "DXF", "0", "1", "*.DWG"];
 
   // El conversor necesita un entorno gráfico aunque se use por línea de comandos (ver Dockerfile: xvfb-run).
-  execFile("xvfb-run", ["-a", ODA_BIN, ...args], { timeout: 90000 }, (err, stdout, stderr) => {
+  execFile("xvfb-run", ["-a", ODA_BIN, ...args], { timeout: 120000 }, (err, stdout, stderr) => {
     try {
       const files = fs.readdirSync(outputDir).filter((f) => f.toLowerCase().endsWith(".dxf"));
       if (!files.length) {
